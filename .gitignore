@@ -18,3 +18,5 @@ _docs/
 *.swo
 *~
 
+# Git
+.gitignore
