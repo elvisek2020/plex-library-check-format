@@ -95,14 +95,14 @@ python3 ./02.analyze_plex_csv.py
 
 **Audio fix pouze:**
 
-- Audio kodek: DTS, TrueHD
-- Video kodek: H.264 nebo HEVC 8-bit (kompatibilní)
-- Obrázkové titulky: PGS/DVD
+- Audio kodek: DTS, TrueHD, DCA
+- Video kodek: H.264 nebo HEVC 8-bit (kompatibilní s Hisense TV)
+- HEVC 8-bit soubory nejsou zbytečně konvertovány, pouze audio
 
 **Full video fix:**
 
-- Video kodek: HEVC 10-bit (nekompatibilní)
-- + případně problémové audio nebo obrázkové titulky
+- Video kodek: HEVC 10-bit (nekompatibilní s Hisense TV)
+- Všechny HEVC 10-bit soubory jsou detekovány a konvertovány na H.264
 
 ### Krok 3: Oprava souborů
 
@@ -132,6 +132,7 @@ bash ./04.fix_full_video.sh full_video_fix.csv
 **Co dělá:**
 
 - Re-encode video na H.264 (libx264, CRF 18, High profile)
+- Dynamický H.264 Level podle rozlišení (Level 5.0 pro 4K, 4.1 pro 1080p, 3.1 pro 720p)
 - Konvertuje audio na AC3 640kbps
 - Kopíruje titulky
 - Vytvoří `*.fixed.mkv` vedle originálu
@@ -191,9 +192,10 @@ Projekt je navržen jako sada nezávislých skriptů, které lze spouštět post
 
 **Video konverze:**
 
-- Video: H.264 (libx264), CRF 18, High profile, Level 4.1
+- Video: H.264 (libx264), CRF 18, High profile, dynamický Level (5.0/4.1/3.1 podle rozlišení)
 - Audio: AC3, 640kbps, 5.1 surround
 - Titulky: Copy (zachování originálu)
+- Optimalizováno pro Hisense TV (55A6EG, 75E7KQ, 55E7NQ Pro)
 
 ### 📁 Struktura projektu
 
@@ -206,8 +208,7 @@ plex-library-check-format/
 ├── plex_codec_report.csv        # Výstup skenování (generováno)
 ├── audio_fix_only.csv           # Seznam pro audio fix (generováno)
 ├── full_video_fix.csv           # Seznam pro full fix (generováno)
-├── fix_full_video_*.log         # Logy konverze (generováno)
-└── README.md                    # Tato dokumentace
+└── fix_full_video_*.log         # Logy konverze (generováno)
 ```
 
 ### 🔧 Detaily konverze
@@ -220,7 +221,7 @@ ffmpeg -i input.mkv \
   -c:v libx264 \
   -pix_fmt yuv420p \
   -profile:v high \
-  -level 4.1 \
+  -level 5.0 \
   -crf 18 \
   -c:a ac3 \
   -b:a 640k \
@@ -234,6 +235,7 @@ ffmpeg -i input.mkv \
 - `-c:v libx264` - H.264 video kodek
 - `-pix_fmt yuv420p` - 8-bit pixel formát (kompatibilní)
 - `-profile:v high` - High profile pro lepší kompatibilitu
+- `-level` - dynamicky podle rozlišení (5.0 pro 4K, 4.1 pro 1080p, 3.1 pro 720p)
 - `-crf 18` - vysoká kvalita (nižší = lepší kvalita)
 - `-c:a ac3` - AC3 audio kodek
 - `-b:a 640k` - audio bitrate

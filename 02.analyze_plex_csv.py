@@ -49,11 +49,12 @@ for row in rows:
     audp = audio_problem(row["acodec"])
     img = has_image_subs(row["subtitle_codecs"])
 
-    # FULL FIX = HEVC 10bit + (PGS/DVD subs OR problem audio)
-    # (videa nepřevádíme zbytečně; jen když je 10bit HEVC "kombinační průšvih")
-    if hevc10 and (img or audp):
+    # FULL FIX = HEVC 10bit (nekompatibilní s Hisense TV)
+    # Nebo HEVC 10bit + (PGS/DVD subs OR problem audio)
+    if hevc10:
         full_fix.append(row)
     # AUDIO FIX = DTS/TrueHD/DCA, pokud to není full fix
+    # (HEVC 8-bit + problémové audio → pouze audio fix, HEVC 8-bit je OK)
     elif audp:
         audio_only.append(row)
 

@@ -93,6 +93,31 @@ make_out_path() {
   printf "%s/%s.fixed.%s" "$dir" "$name" "$ext"
 }
 
+# Určí H.264 Level podle rozlišení videa
+# Optimalizováno pro Hisense TV kompatibilitu
+get_h264_level() {
+  local in_path="$1"
+  local width height pixels
+  
+  width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of default=nk=1:nw=1 "$in_path" 2>/dev/null || echo "0")
+  height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of default=nk=1:nw=1 "$in_path" 2>/dev/null || echo "0")
+  
+  width=${width:-0}
+  height=${height:-0}
+  pixels=$((width * height))
+  
+  # 4K (3840x2160 = 8,294,400) nebo větší → Level 5.0
+  if [[ $pixels -ge 8294400 ]]; then
+    echo "5.0"
+  # 1080p (1920x1080 = 2,073,600) nebo větší → Level 4.1
+  elif [[ $pixels -ge 2073600 ]]; then
+    echo "4.1"
+  # 720p a méně → Level 3.1
+  else
+    echo "3.1"
+  fi
+}
+
 run_one() {
   local in_path="$1"
   local out_path
@@ -126,9 +151,18 @@ run_one() {
     rm -f "$out_path" || true
   fi
 
+  # Urči H.264 Level podle rozlišení (optimalizováno pro Hisense TV)
+  local h264_level
+  h264_level=$(get_h264_level "$in_path")
+  echo "Detekované rozlišení → H.264 Level: $h264_level"
+  
   # ffmpeg: video libx264 re-encode, audio -> AC3 640k, subs copy
+  # Dynamický Level podle rozlišení pro lepší kompatibilitu s 4K obsahem
+  # POZNÁMKA: Pro moderní Hisense TV lze zvážit EAC3 místo AC3:
+  #   Změňte: -c:a ac3 → -c:a eac3
+  #   EAC3 poskytuje lepší kvalitu při stejném bitrate, ale je třeba ověřit podporu na TV
   local cmd
-  cmd=(ffmpeg -hide_banner -nostdin -y -i "$in_path" -map 0 -c:v libx264 -pix_fmt yuv420p -profile:v high -level 4.1 -crf 18 -c:a ac3 -b:a 640k -c:s copy "$out_path")
+  cmd=(ffmpeg -hide_banner -nostdin -y -i "$in_path" -map 0 -c:v libx264 -pix_fmt yuv420p -profile:v high -level "$h264_level" -crf 18 -c:a ac3 -b:a 640k -c:s copy "$out_path")
   echo "CMD: ${cmd[*]}"
 
   if "${cmd[@]}"; then
